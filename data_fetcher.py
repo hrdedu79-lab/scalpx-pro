@@ -15,6 +15,7 @@ from config import (
     US_MARKET_OPEN_HOUR, US_MARKET_OPEN_MINUTE,
     US_MARKET_CLOSE_HOUR, US_MARKET_CLOSE_MINUTE,
 )
+from stock_lists import KR_STOCKS, US_STOCKS
 
 
 class DataFetcher:
@@ -32,20 +33,34 @@ class DataFetcher:
         """사용자 입력을 yfinance 티커 심볼로 변환합니다."""
         user_input = user_input.strip()
 
-        # 한국 인기 종목 이름 매칭
+        # 1. 전체 한국 종목 리스트에서 매칭 (stock_lists.py)
+        if user_input in KR_STOCKS:
+            return KR_STOCKS[user_input]
+
+        # 2. config.py 인기 종목 매칭 (하위 호환)
         if user_input in POPULAR_KR_STOCKS:
             return POPULAR_KR_STOCKS[user_input]
 
-        # 미국 인기 종목 매칭
+        # 3. 미국 종목 — 티커 직접 매칭
         upper = user_input.upper()
         if upper in POPULAR_US_STOCKS:
             return POPULAR_US_STOCKS[upper]
 
-        # 숫자 6자리 → 한국 종목 코드로 간주
+        # 4. 미국 종목 — US_STOCKS 값(티커)으로 매칭
+        us_tickers = set(US_STOCKS.values())
+        if upper in us_tickers:
+            return upper
+
+        # 5. 미국 종목 — "NVDA (NVIDIA)" 형태의 키로 매칭
+        for key, val in US_STOCKS.items():
+            if upper == val or upper in key.upper():
+                return val
+
+        # 6. 숫자 6자리 → 한국 종목 코드로 간주
         if user_input.isdigit() and len(user_input) == 6:
             return f"{user_input}.KS"
 
-        # 그 외 영문 → 미국 종목으로 간주
+        # 7. 그 외 영문 → 미국 종목으로 간주
         if user_input.isalpha():
             return user_input.upper()
 
