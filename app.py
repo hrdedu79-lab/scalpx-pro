@@ -904,30 +904,28 @@ try:
         medals = ["🥇", "🥈", "🥉"]
         for i in range(min(3, len(top_volume_df))):
             row = top_volume_df.iloc[i]
-            change_color = "#51cf66" if row["등락률"] >= 0 else "#ff6b6b"
-            change_sign = "+" if row["등락률"] >= 0 else ""
-            vol_str = f"{row['거래량']:,.0f}"
+            r_name = row["종목명"]
+            r_price = row["현재가"]
+            r_change = row["등락률"]
+            r_vol = row["거래량"]
+            change_color = "#51cf66" if r_change >= 0 else "#ff6b6b"
+            change_sign = "+" if r_change >= 0 else ""
+            vol_str = f"{r_vol:,.0f}"
+            medal = medals[i]
 
             with top3_cols[i]:
-                st.markdown(f"""
-                <div style="background: linear-gradient(135deg, rgba(30, 30, 80, 0.8), rgba(50, 50, 120, 0.5));
-                     border: 1px solid rgba(100, 120, 255, 0.25); border-radius: 16px;
-                     padding: 20px; text-align: center; min-height: 160px;">
-                    <div style="font-size: 1.5rem;">{medals[i]}</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #e0e0ff; margin: 6px 0;">
-                        {row['종목명']}
-                    </div>
-                    <div style="font-size: 1.3rem; font-weight: 700; color: #a78bfa;">
-                        ₩{row['현재가']:,.0f}
-                    </div>
-                    <div style="font-size: 0.95rem; font-weight: 600; color: {change_color}; margin-top: 4px;">
-                        {change_sign}{row['등락률']:.2f}%
-                    </div>
-                    <div style="font-size: 0.75rem; color: #8890b0; margin-top: 6px;">
-                        거래량 {vol_str}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                card_html = (
+                    '<div style="background: linear-gradient(135deg, rgba(30, 30, 80, 0.8), rgba(50, 50, 120, 0.5));'
+                    ' border: 1px solid rgba(100, 120, 255, 0.25); border-radius: 16px;'
+                    ' padding: 20px; text-align: center; min-height: 160px;">'
+                    f'<div style="font-size: 1.5rem;">{medal}</div>'
+                    f'<div style="font-size: 1.1rem; font-weight: 700; color: #e0e0ff; margin: 6px 0;">{r_name}</div>'
+                    f'<div style="font-size: 1.3rem; font-weight: 700; color: #a78bfa;">₩{r_price:,.0f}</div>'
+                    f'<div style="font-size: 0.95rem; font-weight: 600; color: {change_color}; margin-top: 4px;">{change_sign}{r_change:.2f}%</div>'
+                    f'<div style="font-size: 0.75rem; color: #8890b0; margin-top: 6px;">거래량 {vol_str}</div>'
+                    '</div>'
+                )
+                st.markdown(card_html, unsafe_allow_html=True)
 
         # 나머지 4~15위 테이블
         if len(top_volume_df) > 3:
@@ -935,49 +933,44 @@ try:
 
             table_rows = ""
             for idx, row in remaining.iterrows():
-                change_color = "#51cf66" if row["등락률"] >= 0 else "#ff6b6b"
-                change_sign = "+" if row["등락률"] >= 0 else ""
-                vol_str = f"{row['거래량']:,.0f}"
+                r_name = row["종목명"]
+                r_price = row["현재가"]
+                r_change = row["등락률"]
+                r_vol = row["거래량"]
+                change_color = "#51cf66" if r_change >= 0 else "#ff6b6b"
+                change_sign = "+" if r_change >= 0 else ""
+                vol_str = f"{r_vol:,.0f}"
 
-                table_rows += f"""
-                <tr style="border-bottom: 1px solid rgba(100, 120, 255, 0.08);">
-                    <td style="padding: 10px 14px; color: #8890b0; font-weight: 600; width: 40px;">
-                        {idx}
-                    </td>
-                    <td style="padding: 10px 14px; color: #e0e0ff; font-weight: 600;">
-                        {row['종목명']}
-                    </td>
-                    <td style="padding: 10px 14px; color: #a78bfa; font-weight: 600; text-align: right;">
-                        ₩{row['현재가']:,.0f}
-                    </td>
-                    <td style="padding: 10px 14px; color: {change_color}; font-weight: 600; text-align: right;">
-                        {change_sign}{row['등락률']:.2f}%
-                    </td>
-                    <td style="padding: 10px 14px; color: #8890b0; text-align: right;">
-                        {vol_str}
-                    </td>
-                </tr>
-                """
+                table_rows += (
+                    f'<tr style="border-bottom: 1px solid rgba(100, 120, 255, 0.08);">'
+                    f'<td style="padding: 10px 14px; color: #8890b0; font-weight: 600; width: 40px;">{idx}</td>'
+                    f'<td style="padding: 10px 14px; color: #e0e0ff; font-weight: 600;">{r_name}</td>'
+                    f'<td style="padding: 10px 14px; color: #a78bfa; font-weight: 600; text-align: right;">₩{r_price:,.0f}</td>'
+                    f'<td style="padding: 10px 14px; color: {change_color}; font-weight: 600; text-align: right;">{change_sign}{r_change:.2f}%</td>'
+                    f'<td style="padding: 10px 14px; color: #8890b0; text-align: right;">{vol_str}</td>'
+                    f'</tr>'
+                )
 
-            st.markdown(f"""
-            <div style="background: rgba(25, 25, 60, 0.5); border: 1px solid rgba(100, 120, 255, 0.15);
-                 border-radius: 14px; overflow: hidden; margin-top: 16px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: rgba(40, 40, 100, 0.5); border-bottom: 1px solid rgba(100, 120, 255, 0.2);">
-                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: left;">#</th>
-                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: left;">종목명</th>
-                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">현재가</th>
-                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">등락률</th>
-                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">거래량</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {table_rows}
-                    </tbody>
-                </table>
-            </div>
-            """, unsafe_allow_html=True)
+            table_html = (
+                '<div style="background: rgba(25, 25, 60, 0.5); border: 1px solid rgba(100, 120, 255, 0.15);'
+                ' border-radius: 14px; overflow: hidden; margin-top: 16px;">'
+                '<table style="width: 100%; border-collapse: collapse;">'
+                '<thead>'
+                '<tr style="background: rgba(40, 40, 100, 0.5); border-bottom: 1px solid rgba(100, 120, 255, 0.2);">'
+                '<th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: left;">#</th>'
+                '<th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: left;">종목명</th>'
+                '<th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">현재가</th>'
+                '<th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">등락률</th>'
+                '<th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">거래량</th>'
+                '</tr>'
+                '</thead>'
+                '<tbody>'
+                f'{table_rows}'
+                '</tbody>'
+                '</table>'
+                '</div>'
+            )
+            st.markdown(table_html, unsafe_allow_html=True)
     else:
         st.info("📊 거래량 데이터를 불러오는 중이거나 장외 시간입니다.")
 
