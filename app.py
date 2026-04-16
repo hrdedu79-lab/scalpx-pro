@@ -13,13 +13,12 @@ import pytz
 
 from config import (
     DISCLAIMER,
-    POPULAR_KR_STOCKS,
-    POPULAR_US_STOCKS,
     STOP_LOSS_PCT,
     TARGET_PROFIT_PCT,
 )
 from data_fetcher import DataFetcher
 from analyzer import Analyzer
+from stock_lists import KR_STOCKS, US_STOCKS, search_kr_stocks, search_us_stocks
 
 
 # ============================================================
@@ -280,32 +279,94 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 종목 입력
-    st.markdown("##### 🔍 종목 검색")
-    ticker_input = st.text_input(
-        "종목명 또는 코드 입력",
-        placeholder="예: 삼성전자, NVDA, 005930",
-        help="한국 종목명, 미국 티커, 또는 6자리 종목코드를 입력하세요.",
+    # ==============================
+    # 시장 선택 (한국 / 미국)
+    # ==============================
+    st.markdown("##### 🌐 시장 선택")
+    market = st.radio(
+        "시장",
+        options=["🇰🇷 한국 주식", "🇺🇸 미국 주식"],
+        horizontal=True,
         label_visibility="collapsed",
     )
 
-    # 인기 종목 바로가기
-    st.markdown("##### 🔥 인기 종목")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**🇰🇷 한국**")
-        for name in list(POPULAR_KR_STOCKS.keys())[:5]:
-            if st.button(name, key=f"kr_{name}", use_container_width=True):
-                ticker_input = name
-                st.session_state["_ticker_override"] = name
-    with col2:
-        st.markdown("**🇺🇸 미국**")
-        for name in list(POPULAR_US_STOCKS.keys())[:5]:
-            if st.button(name, key=f"us_{name}", use_container_width=True):
-                ticker_input = name
-                st.session_state["_ticker_override"] = name
+    is_korean = "한국" in market
 
-    # 오버라이드 적용
+    st.markdown("---")
+
+    # ==============================
+    # 종목 검색 (자동완성)
+    # ==============================
+    st.markdown("##### 🔍 종목 검색")
+
+    ticker_input = ""
+
+    if is_korean:
+        # 한국 주식 검색
+        kr_names = list(KR_STOCKS.keys())
+        selected_kr = st.selectbox(
+            "한국 종목 검색",
+            options=[""] + kr_names,
+            index=0,
+            placeholder="종목명을 입력하세요 (예: 삼성)",
+            label_visibility="collapsed",
+            key="kr_search",
+        )
+        if selected_kr:
+            ticker_input = selected_kr
+
+        # 인기 종목 바로가기
+        st.markdown("##### 🔥 인기 종목")
+        popular_kr = ["삼성전자", "SK하이닉스", "현대차", "NAVER", "카카오",
+                       "LG에너지솔루션", "셀트리온", "삼성바이오로직스", "한화에어로스페이스", "에코프로"]
+        cols = st.columns(2)
+        for i, name in enumerate(popular_kr):
+            with cols[i % 2]:
+                if st.button(name, key=f"pop_kr_{name}", use_container_width=True):
+                    st.session_state["_ticker_override"] = name
+
+    else:
+        # 미국 주식 검색
+        us_names = list(US_STOCKS.keys())
+        selected_us = st.selectbox(
+            "미국 종목 검색",
+            options=[""] + us_names,
+            index=0,
+            placeholder="티커 또는 회사명 입력 (예: NVDA)",
+            label_visibility="collapsed",
+            key="us_search",
+        )
+        if selected_us:
+            # "NVDA (NVIDIA)" 형태에서 티커만 추출
+            ticker_symbol = US_STOCKS.get(selected_us, selected_us)
+            ticker_input = ticker_symbol
+
+        # 인기 종목 바로가기
+        st.markdown("##### 🔥 인기 종목")
+        popular_us = ["NVDA (NVIDIA)", "AAPL (Apple)", "TSLA (Tesla)", "MSFT (Microsoft)",
+                       "AMZN (Amazon)", "META (Meta/Facebook)", "AMD (Advanced Micro Devices)",
+                       "GOOGL (Alphabet/Google)", "PLTR (Palantir)", "NFLX (Netflix)"]
+        cols = st.columns(2)
+        for i, name in enumerate(popular_us):
+            short_name = name.split(" (")[0]  # 버튼에는 티커만 표시
+            with cols[i % 2]:
+                if st.button(short_name, key=f"pop_us_{name}", use_container_width=True):
+                    ticker_symbol = US_STOCKS.get(name, short_name)
+                    st.session_state["_ticker_override"] = ticker_symbol
+
+    # 직접 입력 (선택)
+    st.markdown("---")
+    st.markdown("##### ✏️ 직접 입력")
+    manual_input = st.text_input(
+        "종목코드 직접 입력",
+        placeholder="예: 005930, NVDA",
+        help="티커 또는 종목코드를 직접 입력할 수도 있습니다.",
+        label_visibility="collapsed",
+    )
+    if manual_input:
+        ticker_input = manual_input
+
+    # 오버라이드 적용 (인기 종목 버튼 클릭 시)
     if "_ticker_override" in st.session_state:
         ticker_input = st.session_state.pop("_ticker_override")
 
