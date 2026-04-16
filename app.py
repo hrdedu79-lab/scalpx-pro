@@ -877,9 +877,119 @@ else:
 
 
 # ============================================================
+# 🔥 한국 시장 거래량 상위 15개 종목
+# ============================================================
+st.markdown("---")
+st.markdown("""
+<div style="margin-top: 20px; margin-bottom: 10px;">
+    <span style="font-size: 1.4rem; font-weight: 700; color: #e0e0ff;">
+        🔥 한국 시장 거래량 TOP 15
+    </span>
+    <span style="font-size: 0.8rem; color: #6b70a0; margin-left: 12px;">
+        실시간 거래 활발 종목 (60초마다 갱신)
+    </span>
+</div>
+""", unsafe_allow_html=True)
+
+fetcher_for_volume = st.session_state.fetcher
+
+try:
+    with st.spinner("📊 거래량 데이터 로딩 중..."):
+        top_volume_df = fetcher_for_volume.get_kr_top_volume(top_n=15)
+
+    if not top_volume_df.empty:
+        # 테이블을 카드 스타일로 렌더링
+        # 상위 3개는 별도 하이라이트
+        top3_cols = st.columns(3)
+        medals = ["🥇", "🥈", "🥉"]
+        for i in range(min(3, len(top_volume_df))):
+            row = top_volume_df.iloc[i]
+            change_color = "#51cf66" if row["등락률"] >= 0 else "#ff6b6b"
+            change_sign = "+" if row["등락률"] >= 0 else ""
+            vol_str = f"{row['거래량']:,.0f}"
+
+            with top3_cols[i]:
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, rgba(30, 30, 80, 0.8), rgba(50, 50, 120, 0.5));
+                     border: 1px solid rgba(100, 120, 255, 0.25); border-radius: 16px;
+                     padding: 20px; text-align: center; min-height: 160px;">
+                    <div style="font-size: 1.5rem;">{medals[i]}</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #e0e0ff; margin: 6px 0;">
+                        {row['종목명']}
+                    </div>
+                    <div style="font-size: 1.3rem; font-weight: 700; color: #a78bfa;">
+                        ₩{row['현재가']:,.0f}
+                    </div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: {change_color}; margin-top: 4px;">
+                        {change_sign}{row['등락률']:.2f}%
+                    </div>
+                    <div style="font-size: 0.75rem; color: #8890b0; margin-top: 6px;">
+                        거래량 {vol_str}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # 나머지 4~15위 테이블
+        if len(top_volume_df) > 3:
+            remaining = top_volume_df.iloc[3:]
+
+            table_rows = ""
+            for idx, row in remaining.iterrows():
+                change_color = "#51cf66" if row["등락률"] >= 0 else "#ff6b6b"
+                change_sign = "+" if row["등락률"] >= 0 else ""
+                vol_str = f"{row['거래량']:,.0f}"
+
+                table_rows += f"""
+                <tr style="border-bottom: 1px solid rgba(100, 120, 255, 0.08);">
+                    <td style="padding: 10px 14px; color: #8890b0; font-weight: 600; width: 40px;">
+                        {idx}
+                    </td>
+                    <td style="padding: 10px 14px; color: #e0e0ff; font-weight: 600;">
+                        {row['종목명']}
+                    </td>
+                    <td style="padding: 10px 14px; color: #a78bfa; font-weight: 600; text-align: right;">
+                        ₩{row['현재가']:,.0f}
+                    </td>
+                    <td style="padding: 10px 14px; color: {change_color}; font-weight: 600; text-align: right;">
+                        {change_sign}{row['등락률']:.2f}%
+                    </td>
+                    <td style="padding: 10px 14px; color: #8890b0; text-align: right;">
+                        {vol_str}
+                    </td>
+                </tr>
+                """
+
+            st.markdown(f"""
+            <div style="background: rgba(25, 25, 60, 0.5); border: 1px solid rgba(100, 120, 255, 0.15);
+                 border-radius: 14px; overflow: hidden; margin-top: 16px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: rgba(40, 40, 100, 0.5); border-bottom: 1px solid rgba(100, 120, 255, 0.2);">
+                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: left;">#</th>
+                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: left;">종목명</th>
+                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">현재가</th>
+                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">등락률</th>
+                            <th style="padding: 12px 14px; color: #6b70a0; font-size: 0.8rem; text-align: right;">거래량</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {table_rows}
+                    </tbody>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("📊 거래량 데이터를 불러오는 중이거나 장외 시간입니다.")
+
+except Exception as e:
+    st.warning(f"⚠️ 거래량 데이터 로딩 실패: {str(e)}")
+
+
+# ============================================================
 # 자동 새로고침
 # ============================================================
 if auto_refresh and ticker_input:
     import time
     time.sleep(30)
     st.rerun()
+

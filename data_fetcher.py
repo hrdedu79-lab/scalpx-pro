@@ -257,3 +257,111 @@ class DataFetcher:
             return float(info.get("regularMarketPrice", info.get("previousClose", 0)))
         except Exception:
             return 0.0
+
+    # ----------------------------------------------------------------
+    # 한국 주식 거래량 상위 종목
+    # ----------------------------------------------------------------
+    def get_kr_top_volume(self, top_n: int = 15) -> pd.DataFrame:
+        """
+        한국 주요 종목 중 거래량 상위 종목을 반환합니다.
+
+        Returns:
+            pd.DataFrame: columns=['종목명', '종목코드', '현재가', '등락률', '거래량']
+        """
+        # 캐시 확인 (60초)
+        cache_key = "kr_top_volume"
+        now = datetime.now()
+        if cache_key in self._cache:
+            elapsed = (now - self._cache_time[cache_key]).total_seconds()
+            if elapsed < 60:
+                return self._cache[cache_key].copy()
+
+        # 주요 한국 종목 50개 (속도를 위해 대형주 위주)
+        top_kr_tickers = {
+            "삼성전자": "005930.KS", "SK하이닉스": "000660.KS",
+            "LG에너지솔루션": "373220.KS", "삼성바이오로직스": "207940.KS",
+            "현대차": "005380.KS", "기아": "000270.KS",
+            "셀트리온": "068270.KS", "KB금융": "105560.KS",
+            "POSCO홀딩스": "005490.KS", "NAVER": "035420.KS",
+            "카카오": "035720.KS", "LG화학": "051910.KS",
+            "삼성SDI": "006400.KS", "현대모비스": "012330.KS",
+            "신한지주": "055550.KS", "SK텔레콤": "017670.KS",
+            "LG전자": "066570.KS", "삼성물산": "028260.KS",
+            "삼성전기": "009150.KS", "카카오뱅크": "323410.KS",
+            "한국전력": "015760.KS", "포스코퓨처엠": "003670.KS",
+            "HD현대중공업": "329180.KS", "한화에어로스페이스": "012450.KS",
+            "한화오션": "042660.KS", "두산에너빌리티": "034020.KS",
+            "현대건설": "000720.KS", "대한항공": "003490.KS",
+            "한국항공우주": "047810.KS", "LG이노텍": "011070.KS",
+            "에코프로": "086520.KS", "에코프로비엠": "247540.KS",
+            "HLB": "028300.KS", "삼성생명": "032830.KS",
+            "삼성화재": "000810.KS", "하나금융지주": "086790.KS",
+            "크래프톤": "259960.KS", "하이브": "352820.KS",
+            "HD현대일렉트릭": "267260.KS", "HD한국조선해양": "009540.KS",
+            "두산로보틱스": "454910.KS", "현대로템": "064350.KS",
+            "한미반도체": "042700.KS", "SK이노베이션": "096770.KS",
+            "SK바이오팜": "326030.KS", "메리츠금융지주": "138040.KS",
+            "SK스퀘어": "402340.KS", "효성중공업": "298040.KS",
+            "LS ELECTRIC": "010120.KS", "한화솔루션": "009830.KS",
+        }
+
+        ticker_list = list(top_kr_tickers.values())
+        name_map = {v: k for k, v in top_kr_tickers.items()}  # 코드→이름 역매핑
+
+        try:
+            # 일괄 다운로드 (1일 데이터)
+            df = yf.download(
+                ticker_list,
+                period="1d",
+                interval="1d",
+                group_by="ticker",
+                progress=False,
+                threads=True,
+            )
+
+            results = []
+            for ticker_code in ticker_list:
+                try:
+                    if len(ticker_list) == 1:
+                        row = df
+                    else:
+                        row = df[ticker_code] if ticker_code in df.columns.get_level_values(0) else None
+
+                    if row is None or row.empty:
+                        continue
+
+                    close_val = float(row["Close"].iloc[-1])
+                    open_val = float(row["Open"].iloc[-1])
+                    volume_val = int(row["Volume"].iloc[-1])
+
+                    if volume_val == 0:
+                        continue
+
+                    change_pct = ((close_val - open_val) / open_val * 100) if open_val > 0 else 0
+
+                    results.append({
+                        "종목명": name_map.get(ticker_code, ticker_code),
+                        "종목코드": ticker_code,
+                        "현재가": close_val,
+                        "등락률": round(change_pct, 2),
+                        "거래량": volume_val,
+                    })
+                except Exception:
+                    continue
+
+            if not results:
+                return pd.DataFrame()
+
+            result_df = pd.DataFrame(results)
+            result_df = result_df.sort_values("거래량", ascending=False).head(top_n).reset_index(drop=True)
+            result_df.index = result_df.index + 1  # 1부터 시작
+
+            # 캐시 저장
+            self._cache[cache_key] = result_df.copy()
+            self._cache_time[cache_key] = now
+
+            return result_df
+
+        except Exception as e:
+            return pd.DataFrame()
+
